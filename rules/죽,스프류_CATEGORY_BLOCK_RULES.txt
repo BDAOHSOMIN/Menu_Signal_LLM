@@ -1,0 +1,360 @@
+# CATEGORY_BLOCK_RULES: 죽/스프류
+
+## BLOCK_PRIORITY
+R98_OUT_OF_SCOPE
+R02_스튜
+R03_스프
+R01_죽
+R97_죽스프류복합검토
+R99_REVIEW
+
+## 공통 처리 원칙
+- BLOCK_PRIORITY를 위에서부터 적용한다.
+- 특정 R block에 들어간 뒤에는 해당 block의 INTERNAL_PRIORITY를 위에서부터 적용한다.
+- 죽,스프 category는 cusine_signal 출력이 정말 중요하다. 
+- final_generic_name은 세부 메뉴명을 그대로 보존하는 필드가 아니라 분석용 bucket 이름이다.
+- 죽/스프류의 final_generic_name은 원칙적으로 아래 3개만 사용한다.
+  - 죽
+  - 스프
+  - 스튜
+- raw_generic_name에 final_generic_name이 직접 들어 있지 않아도, 메뉴 정체성이 죽/스프/스튜 중 하나로 명확하면 해당 bucket으로 통합한다.
+- 굴라쉬, 클램차우더, 프렌치어니언스프처럼 고유 음식명은 final_generic_name으로 살리지 않고 attribute에 남긴다.
+- final_generic_name에 cuisine_signal을 합치지 않는다.
+- 예: 한식죽, 유럽식스프, 미국식스프처럼 final_generic_name을 만들지 않는다. 웹지식을 활용해서 무조건 죽,스프,스튜 이 3가지 중에서 출력을 해야한다.
+- cuisine_signal은 별도 필드로만 출력한다.
+- 재료명, 고유 음식명, 조리 스타일, 국가/지역 신호는 attribute에 남긴다.
+- CATEGORY_BLOCK_RULES의 통합 규칙은 예시 목록이다. 예시에 없는 raw_generic_name도 음식명, 재료명, 조리법, 외래어/영문 표기, 업종 관습을 근거로 R block과 final_generic_name bucket에 배정한다.
+- 단, 추론은 아래에 정의된 R block과 final_generic_name 후보 안에서만 수행한다.
+- AI가 새로운 assigned_block, family_group, final_generic_name을 임의 생성하면 안 된다.
+- 죽/스프/스튜 중 하나로 명확하면 auto_approve한다.
+- 죽/스프/스튜 안에는 남을 수 있지만 bucket 확정이 위험하면 R97_죽스프류복합검토로 보낸다.
+- 죽/스프류가 아니거나 다른 category가 더 적절하면 R98_OUT_OF_SCOPE로 보낸다.
+- 적용 가능한 block 자체가 불명확하면 R99_REVIEW로 보낸다.
+
+- 단, R01_죽, R02_스튜, R03_스프의 통합 규칙에 명시된 고유 음식명은 R98의 일반 제외어보다 우선 검토한다.
+- 예를 들어 산라탕은 이름에 `탕`이 있어도 R03_스프 통합 규칙에 명시된 중식 스프 후보이므로 R98_OUT_OF_SCOPE로 보내지 않는다.
+- 검보/gumbo는 R02_스튜 통합 규칙에 명시된 스튜 후보이므로 R03_스프나 R98_OUT_OF_SCOPE로 보내지 않는다.
+- 스프카레/수프카레/soup curry는 카레 본체와 스프류 경계가 있으므로 R98_OUT_OF_SCOPE가 아니라 R97_죽스프류복합검토로 보낸다.
+- 퓨레/감자퓨레/관자감자퓨레는 죽/스프/스튜 본체가 아니라 소스/사이드/부재료 성격이 강하므로 R98_OUT_OF_SCOPE로 보낸다.
+
+## cuisine_signal 허용값
+
+cuisine_signal은 반드시 아래 값 중 하나만 출력한다.
+
+- 한식
+- 일식
+- 중식
+- 동남아식
+- 유럽식
+- 미국식
+- 멕시칸식
+- 기타해외식
+- none
+
+## cuisine_signal 판단 원칙
+- cuisine_signal은 메뉴명 안에 명확한 국가/지역/요리권역/고유 음식명 신호가 있을 때만 출력한다.
+- 단순 재료명만으로 cuisine_signal을 추론하지 않는다. 그 이유는 해외메뉴여도 죽,스프,스튜로 일원화 시켰기 때문이다. 
+- 스프라는 조리 형태만으로 유럽식/미국식으로 판단하지 않는다.
+- 죽이라는 조리 형태만으로 무조건 한식으로 판단하지 않는다.
+- 단, 전복죽/닭죽/어죽/팥죽/호박죽/미음처럼 한국 식당 메뉴로 통용되는 죽은 cuisine_signal = 한식으로 판단한다.
+- cuisine_signal이 불명확하면 반드시 cuisine_signal = none으로 둔다.
+- 해외식인 것은 명확하지만 허용 권역 중 하나로 안정적으로 분류하기 어려우면 cuisine_signal = 기타해외식으로 둔다.
+- cuisine_signal은 final_generic_name에 합치지 않는다.
+- cuisine_signal 판단이 메뉴 bucket 판단에도 영향을 줄 정도로 불명확하면 R97 또는 R99_REVIEW로 보낸다.
+
+### none 처리 기준
+- 양송이 스프, 단호박 스프, 감자 스프, 옥수수 스프, 조개 스프, 밤 스프처럼 재료 중심 스프는 cuisine_signal = none으로 둔다.
+- 토마토 스프, 크림 스프, 비프 스튜, 치킨 스튜처럼 서양식 느낌은 있으나 특정 권역 고유명 혹은 마라,홍유 같은 신호가 없는 경우도 기본은 cuisine_signal = none으로 둔다.
+- 단, 프렌치/이탈리안/멕시칸/타이/베트남/일본식/중식/중화/차이니즈 등 명시적 권역 신호가 있으면 해당 cuisine_signal을 출력한다.
+- 조개 스프는 클램차우더로 자동 해석하지 않고 cuisine_signal = none으로 둔다.
+- 옥수수 스프는 중식당 맥락이 명확하지 않으면 cuisine_signal = none으로 둔다.
+
+### 한식
+- 전복죽, 닭죽, 삼계죽, 어죽, 장어죽, 팥죽, 호박죽, 단호박죽, 잣죽, 흑임자죽, 녹두죽, 미음처럼 한식 죽으로 통용되는 후보는 cuisine_signal = 한식으로 둔다.
+- 단호박 스프는 한식 죽이 아니므로 cuisine_signal = none으로 둔다.
+- 단호박죽은 한식 죽으로 보고 cuisine_signal = 한식으로 둔다.
+
+### 중식
+- 샥스핀스프, 산라탕, 산라스프, 중식/중화/차이니즈 신호가 있는 스프는 cuisine_signal = 중식으로 둔다.
+- congee는 중식권 죽 맥락이 명확하면 cuisine_signal = 중식으로 둔다. 
+- 옥수수스프는 raw_generic_name만으로는 중식으로 확정하지 않는다.
+- 중식,중화 옥수수스프, 차이니즈 콘스프처럼 중식 신호가 같이 있으면 cuisine_signal = 중식으로 둔다.
+
+### 일식
+- 미소스프, 미소수프처럼 일식 고유 신호가 명확하면 cuisine_signal = 일식으로 둔다.
+- 일본식/일식 신호가 명확한 죽/스프류는 cuisine_signal = 일식으로 둔다.
+
+### 동남아식
+- 똠얌스프, 톰얌스프, 똠양스프, tom yum soup, tom yam soup, 락사스프처럼 동남아 고유 신호가 명확하면 cuisine_signal = 동남아식으로 둔다.
+- 타이/태국/베트남/말레이시아 등 동남아 권역 신호가 명확하면 cuisine_signal = 동남아식으로 둔다.
+- 코코넛 스프처럼 재료명만으로 동남아식으로 확정하지 않는다.
+
+### 유럽식
+- 프렌치어니언스프, 미네스트로네, 비스크, 포타주, 굴라쉬, 라구스튜처럼 유럽권 고유 음식명이나 유럽식 조리 신호가 명확하면 cuisine_signal = 유럽식으로 둔다.
+- 프렌치/이탈리안/헝가리식/유럽식 등 권역 신호가 명확하면 cuisine_signal = 유럽식으로 둔다.
+- 토마토스프, 크림스프, 양송이스프, 단호박스프는 유럽식으로 자동 확정하지 않는다.
+
+### 미국식
+- 클램차우더, 차우더, 치킨누들스프처럼 미국식 고유 음식명으로 통용되는 스프 후보는 cuisine_signal = 미국식으로 둔다.
+- 검보, gumbo는 미국식 고유 음식명이지만 R03_스프가 아니라 R02_스튜로 처리하고 cuisine_signal = 미국식으로 둔다.
+- 아메리칸/미국식 신호가 명확한 스프/스튜는 cuisine_signal = 미국식으로 둔다.
+- 조개스프는 클램차우더가 아니므로 cuisine_signal = none으로 둔다.
+
+### 멕시칸식
+- 멕시칸치킨스프, 포솔레, pozole, 또르띠야스프, tortilla soup처럼 멕시칸 고유 신호가 명확하면 cuisine_signal = 멕시칸식으로 둔다.
+- 멕시칸/멕시코식 신호가 명확한 스프/스튜는 cuisine_signal = 멕시칸식으로 둔다.
+
+### 기타해외식
+- 해외식 신호는 명확하지만 한식/일식/중식/동남아식/유럽식/미국식/멕시칸식 중 하나로 안정적으로 넣기 어려우면 cuisine_signal = 기타해외식으로 둔다.
+
+## 용어 통일 규칙
+- 수프는 스프와 같은 의미로 보고 final_generic_name = 스프로 통합한다.
+- raw_generic_name에 수프가 있더라도 final_generic_name은 반드시 스프로 출력한다.
+- 예: 밤수프 → final_generic_name = 스프, attribute = 밤
+- 예: 프렌치 어니언 수프 → final_generic_name = 스프, attribute = 프렌치 어니언, cuisine_signal = 유럽식
+- 스튜는 스프와 합치지 않고 final_generic_name = 스튜로 유지한다.
+- 죽은 세부 재료명과 관계없이 final_generic_name = 죽으로 통합한다.
+
+## R98_OUT_OF_SCOPE
+
+family_group = ""
+
+목적:
+죽/스프류가 아니거나 다른 category가 더 적절한 후보를 분리한다.
+
+INTERNAL_PRIORITY:
+1. 밥/덮밥/리조또/죽이 아닌 곡물 요리
+2. 국/탕/찌개/전골
+3. 면/파스타/카레/커리 본체
+4. 샐러드/퓨레/소스/디핑/토핑
+5. 음료/디저트/비메뉴
+
+매칭 조건:
+- 리조또, 빠에야, 덮밥, 볶음밥처럼 밥류 본체
+- 국밥, 일반 탕, 일반 국, 찌개, 전골, 나베처럼 국/탕/찌개류 본체가 명확한 후보
+- 파스타, 라면, 우동, 쌀국수, 면류 본체
+- 카레, 커리, 마사만커리처럼 카레/커리 본체가 강한 후보
+- 샐러드, 무침, 구이, 튀김, 회처럼 죽/스프/스튜가 아닌 조리법
+- 퓨레, 감자퓨레, 관자감자퓨레, 소스, 디핑소스, 크림소스처럼 소스/사이드/부재료 성격이 강한 후보
+- 커피, 에이드, 주스, 맥주, 와인 등 음료/주류
+- 메뉴명이 아니라 설명문, 옵션, 토핑, 추가 항목인 후보
+
+예외 규칙:
+- 산라탕, 산라스프는 이름에 `탕`이 있어도 R03_스프 / final_generic_name = 스프로 처리한다.
+- 스프카레, 수프카레, soup curry는 R98_OUT_OF_SCOPE로 바로 보내지 않고 R97_죽스프류복합검토로 보낸다.
+- 검보, gumbo는 R02_스튜 / final_generic_name = 스튜로 처리한다.
+- 클램차우더, 차우더, 비스크, 미네스트로네, 프렌치어니언스프처럼 R03_스프 통합 규칙에 명시된 고유 스프명은 R98_OUT_OF_SCOPE로 보내지 않는다.
+- 굴라쉬, goulash처럼 R02_스튜 통합 규칙에 명시된 고유 스튜명은 R98_OUT_OF_SCOPE로 보내지 않는다.
+
+출력 규칙:
+- assigned_block = R98_OUT_OF_SCOPE
+- final_generic_name = raw_generic_name
+- family_group = ""
+- normalization_actions = ["exclude_or_correction"]
+- review_status = correction_candidate
+
+## R02_스튜
+
+family_group = 스튜
+
+final_generic_name 후보:
+- 스튜
+
+INTERNAL_PRIORITY:
+1. 스튜
+
+bucket 판단:
+- 스튜는 세부 음식명을 보존하는 메뉴명이 아니라 스튜류 bucket이다.
+- raw_generic_name에 스튜, stew 신호가 명확하면 final_generic_name = 스튜로 통합한다.
+- 굴라쉬, 검보처럼 스튜 계열로 통용되는 고유 음식명도 final_generic_name = 스튜로 통합한다.
+- 고유 음식명과 재료명은 attribute에 남긴다.
+- 스튜 신호가 명확하면 스프보다 R02_스튜를 우선한다.
+- 일반 재료명만 있는 스튜는 cuisine_signal = none을 기본값으로 둔다.
+
+통합 규칙:
+- 스튜, stew, 비프스튜, 소고기스튜, 치킨스튜, 토마토스튜, 해산물스튜, 홍합스튜, 굴라쉬, goulash, 검보, gumbo
+  → final_generic_name = 스튜
+
+- 토마토 비프 스튜, 토마토 치킨 스튜, 라구스튜, 와인스튜, 크림스튜
+  → final_generic_name = 스튜
+
+cuisine_signal 규칙:
+- 굴라쉬, goulash → cuisine_signal = 유럽식
+- 라구스튜, 와인스튜, 명확한 유럽식/이탈리안/프렌치 신호가 있는 스튜 → cuisine_signal = 유럽식
+- 검보, gumbo → cuisine_signal = 미국식
+- 비프스튜, 토마토스튜, 치킨스튜, 크림스튜처럼 재료 중심 스튜는 cuisine_signal = none
+- 특정 국가/권역 신호가 명확하면 해당 cuisine_signal을 출력한다.
+
+attribute 규칙:
+- 굴라쉬, 검보, 토마토, 비프, 소고기, 치킨, 해산물, 홍합, 와인, 라구, 크림 등은 attribute에 남긴다.
+
+주의 규칙:
+- 검보, gumbo는 R03_스프가 아니라 R02_스튜로 처리한다.
+- 검보, gumbo는 final_generic_name = 스튜, cuisine_signal = 미국식으로 둔다.
+- 굴라쉬, goulash는 final_generic_name = 스튜, cuisine_signal = 유럽식으로 둔다.
+- 카레, 커리, 스프카레는 스튜로 자동 통합하지 않는다.
+- 스프카레/수프카레/soup curry는 R97_죽스프류복합검토로 보낸다.
+- 찌개, 전골, 일반 탕 신호가 강하면 R98_OUT_OF_SCOPE로 보낸다.
+- 스튜인지 카레/찜/소스인지 불명확하면 R97_죽스프류복합검토로 보낸다.
+
+## R03_스프
+
+family_group = 스프
+
+final_generic_name 후보:
+- 스프
+
+INTERNAL_PRIORITY:
+1. 스프
+
+bucket 판단:
+- 스프는 세부 음식명을 보존하는 메뉴명이 아니라 스프류 bucket이다.
+- 수프/스프/soup은 모두 final_generic_name = 스프로 통합한다.
+- 클램차우더, 비스크, 미네스트로네, 프렌치어니언스프처럼 고유 음식명도 final_generic_name = 스프로 통합한다.
+- 고유 음식명, 재료명, 스타일 신호는 attribute에 남긴다.
+- 재료명만으로 cuisine_signal을 억지 부여하지 않는다.
+- 양송이스프, 단호박스프, 감자스프, 옥수수스프, 조개스프, 밤스프처럼 재료 중심 스프는 cuisine_signal = none으로 둔다.
+
+통합 규칙:
+- 스프, 수프, soup, 크림스프, 양송이스프, 양송이수프, 단호박스프, 단호박수프, 감자스프, 감자수프, 옥수수스프, 옥수수수프, 밤스프, 밤수프, 조개스프, 조개수프
+  → final_generic_name = 스프
+
+- 프렌치어니언스프, 프렌치 어니언 스프, 프렌치어니언수프, 프렌치 어니언 수프
+  → final_generic_name = 스프
+
+- 클램차우더, clam chowder, 차우더, chowder
+  → final_generic_name = 스프
+
+- 비스크, bisque, 미네스트로네, minestrone, 포타주, potage
+  → final_generic_name = 스프
+
+- 게살스프, 게살수프, 샥스핀스프, 샥스핀수프, 산라탕, 산라스프
+  → final_generic_name = 스프
+
+- 미소스프, 미소수프
+  → final_generic_name = 스프
+
+- 똠얌스프, 톰얌스프, 똠양스프, tom yum soup, tom yam soup
+  → final_generic_name = 스프
+
+- 멕시칸치킨스프, 포솔레, pozole, 또르띠야스프, tortilla soup
+  → final_generic_name = 스프
+
+cuisine_signal 규칙:
+- 프렌치어니언스프, 미네스트로네, 비스크, 포타주 → cuisine_signal = 유럽식
+- 클램차우더, 차우더, 치킨누들스프 → cuisine_signal = 미국식
+- 게살스프, 샥스핀스프, 산라탕 → cuisine_signal = 중식
+- 미소스프, 미소시루 → cuisine_signal = 일식
+- 똠얌스프, 톰얌스프, 똠양스프 → cuisine_signal = 동남아식
+- 멕시칸치킨스프, 포솔레, 또르띠야스프, tortilla soup → cuisine_signal = 멕시칸식
+- 양송이스프, 단호박스프, 감자스프, 옥수수스프, 조개스프, 밤스프, 토마토스프, 크림스프처럼 재료 중심 스프는 cuisine_signal = none
+- 프렌치/이탈리안/중식/차이니즈/일식/타이/멕시칸 등 명시적 권역 신호가 있으면 해당 cuisine_signal을 출력한다.
+
+attribute 규칙:
+- 양송이, 단호박, 감자, 옥수수, 밤, 조개, 토마토, 크림, 프렌치어니언, 클램차우더, 차우더, 비스크, 미네스트로네, 포타주, 게살, 샥스핀, 산라, 미소, 똠얌, 포솔레 등은 attribute에 남긴다.
+
+주의 규칙:
+- 스튜 신호가 명확하면 R02_스튜를 우선한다.
+- 검보, gumbo는 스프가 아니라 R02_스튜로 보낸다.
+- 산라탕은 이름에 `탕`이 있어도 중식 스프 후보로 보고 R03_스프 / final_generic_name = 스프로 처리한다.
+- 카레/커리 단독은 R98_OUT_OF_SCOPE로 보낸다.
+- 스프카레/수프카레/soup curry는 R97_죽스프류복합검토로 보낸다.
+- 퓨레, 감자퓨레, 관자감자퓨레는 R03_스프가 아니라 R98_OUT_OF_SCOPE로 보낸다.
+- 스프인지 소스/크림/퓨레인지 불명확하면 R97_죽스프류복합검토로 보낸다.
+
+## R01_죽
+
+family_group = 죽
+
+final_generic_name 후보:
+- 죽
+
+INTERNAL_PRIORITY:
+1. 죽
+
+bucket 판단:
+- 죽은 세부 재료명을 보존하는 메뉴명이 아니라 죽류 bucket이다.
+- raw_generic_name에 죽이 명확하면 final_generic_name = 죽으로 통합한다.
+- 전복죽, 닭죽, 소고기죽, 어죽처럼 세부 재료가 달라도 final_generic_name = 죽으로 통합한다.
+- 재료명과 스타일 신호는 attribute에 남긴다.
+- 한식 죽으로 통용되는 후보는 cuisine_signal = 한식으로 둔다.
+- 단, 죽이라는 글자가 있어도 비유적 표현, 세트명, 옵션명, 비메뉴이면 R98_OUT_OF_SCOPE 또는 R99_REVIEW로 보낸다.
+
+통합 규칙:
+- 죽, 흰죽, 야채죽, 채소죽, 전복죽, 전복내장죽, 소고기죽, 쇠고기죽, 닭죽, 삼계죽, 닭가슴살죽, 어죽, 장어죽, 새우죽, 게살죽, 해물죽, 버섯죽, 호박죽, 단호박죽, 팥죽, 잣죽, 흑임자죽, 깨죽, 녹두죽, 미음
+  → final_generic_name = 죽
+
+- porridge, congee
+  → final_generic_name = 죽
+
+cuisine_signal 규칙:
+- 전복죽, 닭죽, 삼계죽, 어죽, 장어죽, 팥죽, 호박죽, 단호박죽, 잣죽, 흑임자죽, 녹두죽, 미음 등 한식 죽 맥락이 명확하면 cuisine_signal = 한식
+- congee처럼 중식권 죽 맥락이 명확하면 cuisine_signal = 중식
+- porridge처럼 일반 해외식 죽/포리지 맥락이면 cuisine_signal = 기타해외식 또는 none
+- 재료만으로 권역이 불명확하면 cuisine_signal = none
+
+attribute 규칙:
+- 전복, 내장, 소고기, 닭, 삼계, 어, 장어, 새우, 게살, 해물, 버섯, 호박, 단호박, 팥, 잣, 흑임자, 깨, 녹두, 미음, congee, porridge 등은 attribute에 남긴다.
+
+주의 규칙:
+- 리조또, 빠에야, 덮밥은 죽으로 통합하지 않고 R98_OUT_OF_SCOPE로 보낸다.
+- 숭늉처럼 죽/스프/스튜 중 하나로 확정하기 애매하면 R97_죽스프류복합검토로 보낸다.
+
+## R97_죽스프류복합검토
+
+family_group = 죽스프류복합검토
+
+목적:
+죽/스프류 안에는 남을 수 있지만, 죽/스프/스튜 중 하나로 자동 통합하면 의미 손실이나 category 혼동이 생길 수 있는 후보를 검토용으로 분리한다.
+
+INTERNAL_PRIORITY:
+1. 죽/스프/스튜 경계가 애매한 후보
+2. 국/탕/찌개/카레와 경계가 애매한 후보
+3. 소스/부재료와 경계가 애매한 후보
+4. cuisine_signal 판단이 메뉴 정체성 판단에 영향을 주는 후보
+
+매칭 조건:
+- 2차 프롬프트에서 out 되지 않은 형태 중 죽/스프/스튜 경계가 애매한 후보
+- 누룽숭늉, 숭늉처럼 죽/스프/탕/음료 경계가 애매한 후보
+- 치폴레슈프림, 슈프림처럼 스프와 무관할 수 있으나 이름상 혼동될 수 있는 후보
+- 죽/스프/스튜 중 하나로 넣을 수는 있어 보이나, 자동 통합하면 의미 손실이 큰 후보
+
+제외 조건:
+- 죽 신호가 명확하면 R01_죽
+- 스튜 신호가 명확하면 R02_스튜
+- 스프/수프/soup 신호가 명확하면 R03_스프
+- 산라탕/산라스프처럼 R03_스프 통합 규칙에 명시된 후보는 R03_스프
+- 검보/gumbo처럼 R02_스튜 통합 규칙에 명시된 후보는 R02_스튜
+- 퓨레, 감자퓨레, 관자감자퓨레처럼 소스/사이드/부재료 성격이 강한 후보는 R98_OUT_OF_SCOPE
+- 카레, 커리, 마사만커리처럼 카레 본체가 강한 후보는 R98_OUT_OF_SCOPE
+- 죽/스프류가 아님이 명확하면 R98_OUT_OF_SCOPE
+- 적용 가능한 block 자체가 불명확하면 R99_REVIEW
+
+출력 규칙:
+- assigned_block = R97_죽스프류복합검토
+- final_generic_name = raw_generic_name
+- family_group = 죽스프류복합검토
+- normalization_actions = ["broad_merge_review"]
+- review_status = needs_review
+
+## R99_REVIEW
+
+family_group = ""
+
+목적:
+죽/스프류 여부, 음식명 여부, 또는 적용 가능한 R block 자체가 불명확한 후보를 최종 검토한다.
+
+매칭 조건:
+- 어떤 block에도 안정적으로 들어가지 않는 경우
+- raw_generic_name만으로 죽/스프/스튜인지 알 수 없는 경우
+- 음식명인지 옵션/소스/재료명인지 불명확한 경우
+- 외국어 메뉴명 또는 오타가 심해 죽/스프류 여부 판단이 어려운 후보
+- 브랜드명 또는 업장 고유명처럼 보이나 죽/스프/스튜 본체가 드러나지 않는 후보
+- cuisine_signal은 강하지만 죽/스프/스튜 bucket으로 넣기 어려운 후보
+
+출력 규칙:
+- assigned_block = R99_REVIEW
+- final_generic_name = raw_generic_name
+- family_group = ""
+- normalization_actions = ["broad_merge_review"]
+- review_status = needs_review
